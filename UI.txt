@@ -1,0 +1,76 @@
+import net.miginfocom.swing.MigLayout;
+
+import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Objects;
+
+public class UI extends JFrame {
+    public FileManager fm = new FileManager();
+    public UI(){
+        super("NDisk");
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        main();
+    }
+    public void main(){
+        clear();
+        JButton loadDisk = new JButton("Загрузить новые драйвера");
+        loadDisk.addActionListener(e -> loadDisk());
+        add(loadDisk,"grow, shrink, wmin 100");
+        JButton downloadDisk = new JButton("Скачать драйвера");
+        downloadDisk.addActionListener(e -> downloadDisk());
+        add(downloadDisk, "grow, shrink, wmin 100, wrap");
+        ender();
+    }
+    public void loadDisk(){
+        clear();
+        addBackButton();
+        ender();
+    }
+    public void downloadDisk(){
+        clear();
+        JComboBox<String> firm = new JComboBox<>();
+        add(firm, "shrink, grow, wmin 100");
+        for (File folder:fm.getFolders(fm.getCurFolder())) {
+            firm.addItem(folder.getName());
+        }
+        JComboBox<String> model = new JComboBox<>();
+        add(model, "grow, shrink, wmin 100");
+        firm.addActionListener(e -> {
+            model.removeAllItems();
+            System.out.println("checking on "+firm.getSelectedItem().toString());
+            for (File folder:fm.getFolders(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()), firm.getSelectedItem().toString()))){
+                model.addItem(folder.getName());
+            }
+        });
+        JButton confirm = new JButton("Подтвердить");
+        add(confirm, "grow, shrink, wmin 100, wrap");
+        confirm.addActionListener(e -> {
+            String firmName = firm.getSelectedItem().toString();
+            Object modelName = model.getSelectedItem();
+            if(modelName==null){
+                JOptionPane.showMessageDialog(null, "Необходимо выбрать модель");
+                return;
+            }
+            fm.openFolder(firmName+"/"+modelName.toString());
+        });
+        addBackButton();
+        ender();
+    }
+    public void clear(){
+        getContentPane().removeAll();
+        setLayout(new MigLayout());
+    }
+    public void ender(){
+        pack();
+        validate();
+        setVisible(true);
+    }
+    public void addBackButton(){
+        JButton back = new JButton("Назад");
+        back.addActionListener(e -> main());
+        add(back, "grow, shrink, wmin 100");
+    }
+}
