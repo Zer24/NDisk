@@ -1,19 +1,17 @@
-import com.formdev.flatlaf.*;
+import com.formdev.flatlaf.FlatDarculaLaf;
+import com.formdev.flatlaf.FlatLightLaf;
 import com.formdev.flatlaf.themes.FlatMacDarkLaf;
-import com.formdev.flatlaf.themes.FlatMacLightLaf;
 import net.miginfocom.swing.MigLayout;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 
 public class UI extends JFrame {
     public FileManager fm = new FileManager();
@@ -35,7 +33,7 @@ public class UI extends JFrame {
                 setIconImage(image);
             }
         } catch ( Exception exception){
-
+            //No icons for you
         }
         try{
             fontSize = Integer.parseInt(fm.readSettings().get(0));
@@ -51,23 +49,39 @@ public class UI extends JFrame {
                 System.out.println(key + " = " + value);
             }
         }catch (Exception exception){
-
+            //settings failed
         }
-//        try {
-//            // Попробуйте Nimbus
-//            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
-//                if ("GTK+".equals(info.getName())) {
-//                    UIManager.setLookAndFeel(info.getClassName());
-//                    break;
-//                }
-//            }
-//            // Если Nimbus недоступен, используйте системный LAF (Windows, GTK и т.д.)
-//            if (UIManager.getLookAndFeel().getName().equals("Metal")) {
-//                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace(); // Обработка ошибок при загрузке LAF
-//        }
+        /*try{
+            fontSize = Integer.parseInt(fm.readSettings().get(0));
+            font = new Font("Arial", Font.PLAIN, fontSize);
+            theme=fm.readSettings().get(1);
+            updateTheme();
+            UIDefaults defaults = UIManager.getDefaults();
+            Enumeration<Object> keys = defaults.keys();
+
+            while (keys.hasMoreElements()) {
+                Object key = keys.nextElement();
+                Object value = defaults.get(key);
+                System.out.println(key + " = " + value);
+            }
+        }catch (Exception exception){
+
+        }*/
+        /*        try {
+            // Попробуйте Nimbus
+            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+                if ("GTK+".equals(info.getName())) {
+                    UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+            // Если Nimbus недоступен, используйте системный LAF (Windows, GTK и т.д.)
+            if (UIManager.getLookAndFeel().getName().equals("Metal")) {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            }
+        } catch (Exception e) {
+            e.printStackTrace(); // Обработка ошибок при загрузке LAF
+        }*/
         main();
     }
     private void setFont(Container container, Font font) {
@@ -76,7 +90,7 @@ public class UI extends JFrame {
             try{
                 component.setFont(font);
             }catch (Exception e){
-
+                //not using fonts
             }
             if (component instanceof Container) {
                 // Рекурсивный вызов для вложенных контейнеров
@@ -223,7 +237,7 @@ public class UI extends JFrame {
             int confirmed = JOptionPane.showConfirmDialog(null, "Папка модели и все файлы находящиеся в ней будут удалены, Вы действительно хотите продолжить?", "Удаление", JOptionPane.YES_NO_OPTION);
             if(confirmed==JOptionPane.YES_OPTION) {
                 if (fm.deleteFolder(fm.selectSubFolder(fm.getFolders(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()), firm.getSelectedValue())), model.getSelectedValue()))) {
-                    JOptionPane.showMessageDialog(null, "Модель была удалёна успешно");
+                    JOptionPane.showMessageDialog(null, "Модель была удалена успешно");
                     fillList(modelM, fm.getFolders(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()), firm.getSelectedValue())), modelT.getText());
                     model.setVisible(modelM.getSize()!=0);
                 } else {
@@ -254,7 +268,7 @@ public class UI extends JFrame {
         }
         JButton fontB = new JButton("Подтвердить");
         fontB.addActionListener(e -> {
-            if(fontT.getText()==""){
+            if(Objects.equals(fontT.getText(), "")){
                 JOptionPane.showMessageDialog(null, "Напишите размер шрифта в строку и подтвердите");
                 return;
             }
@@ -296,7 +310,7 @@ public class UI extends JFrame {
 
         themeC.addActionListener(e ->{
             try {
-                theme = themeC.getSelectedItem().toString();
+                theme = Objects.requireNonNull(themeC.getSelectedItem()).toString();
                 fm.writeSettings(fontSize, theme);
                 if(!updateTheme()){
                     throw new Exception();
@@ -314,17 +328,14 @@ public class UI extends JFrame {
         dev.setContentAreaFilled(false);
         dev.setMargin(new Insets(0,0,0,0));
         dev.setOpaque(false);
-        dev.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                List<String> text = Arrays.asList(dev.getText().split(""));
-                Collections.shuffle(text);
-                StringBuilder txet = new StringBuilder();
-                for(String letter:text){
-                    txet.append(letter);
-                }
-                dev.setText(txet.toString());
+        dev.addActionListener(e -> {
+            List<String> text = Arrays.asList(dev.getText().split(""));
+            Collections.shuffle(text);
+            StringBuilder txet = new StringBuilder();
+            for(String letter:text){
+                txet.append(letter);
             }
+            dev.setText(txet.toString());
         });
         JButton back = new JButton("Назад");
         back.addActionListener(e -> main());

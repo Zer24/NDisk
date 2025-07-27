@@ -2,7 +2,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Scanner;
+import java.util.Objects;
 
 public class FileManager {
     public File getCurFolder(){
@@ -32,32 +32,24 @@ public class FileManager {
         }
         return null;
     }
-    public void readFolders(ArrayList<File> files){
-        System.out.println("Список подпапок в папке: ");
-        for (File file : files) {
-            System.out.println("- " + file.getName());
-        }
-    }
+
     public boolean createFolder(File parentFolder, String name){
         System.out.println("Creating folder "+name+" at folder "+parentFolder.getName());
         return new File(parentFolder, name).mkdir();
     }
     public boolean deleteFolder(File folder){
-        for(File file: folder.listFiles()){
-            if(file.isDirectory()) {
-                if(!deleteFolder(file)){
+        for (File file : Objects.requireNonNull(folder.listFiles())) {
+            if (file.isDirectory()) {
+                if (!deleteFolder(file)) {
                     return false;
                 }
-            }else{
-                if(!file.delete()){
+            } else {
+                if (!file.delete()) {
                     return false;
                 }
             }
         }
-        if(!folder.delete()){
-            return false;
-        }
-        return true;
+        return folder.delete();
     }
     public void openFolder(File folder){
         try {
@@ -77,7 +69,9 @@ public class FileManager {
         ArrayList<String> settings = new ArrayList<>();
         File file = new File("settings.ini");
         if(!file.exists()){
-            file.createNewFile();
+            if(!file.createNewFile()){
+                JOptionPane.showMessageDialog(null, "Не удалось создать файл настроек");
+            }
             writeSettings(20, "Светлая");
         }
         BufferedReader br = new BufferedReader(new FileReader("settings.ini"));
