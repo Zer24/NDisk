@@ -40,14 +40,6 @@ public class UI extends JFrame {
             font = new Font("Arial", Font.PLAIN, fontSize);
             theme=fm.readSettings().get(1);
             updateTheme();
-            UIDefaults defaults = UIManager.getDefaults();
-            Enumeration<Object> keys = defaults.keys();
-
-            while (keys.hasMoreElements()) {
-                Object key = keys.nextElement();
-                Object value = defaults.get(key);
-                System.out.println(key + " = " + value);
-            }
         }catch (Exception exception){
             //settings failed
         }
