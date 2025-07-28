@@ -20,7 +20,7 @@ public class UI extends JFrame {
     Font font = new Font("Arial", Font.PLAIN, 11);
     int fontSize = 11;
     String theme = "Серая";
-    String version ="v1.0.0";
+    String version ="v1.0.1";
     public UI(){
         super("NDisk");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
