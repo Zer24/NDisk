@@ -1,3 +1,5 @@
+import org.apache.commons.io.FileUtils;
+
 import javax.swing.*;
 import java.awt.*;
 import java.io.*;
@@ -5,6 +7,8 @@ import java.util.ArrayList;
 import java.util.Objects;
 
 public class FileManager {
+    int tasks = 0;
+    JLabel tasksL = new JLabel("Выполняется задач: "+tasks);
     public File getCurFolder(){
         return new File(".");
     }
@@ -33,9 +37,13 @@ public class FileManager {
         return null;
     }
 
-    public boolean createFolder(File parentFolder, String name){
+    public File createFolder(File parentFolder, String name){
         System.out.println("Creating folder "+name+" at folder "+parentFolder.getName());
-        return new File(parentFolder, name).mkdir();
+        File folder = new File(parentFolder, name);
+        if(!folder.isDirectory()) {
+            folder.mkdir();
+        }
+        return folder;
     }
     public boolean deleteFolder(File folder){
         for (File file : Objects.requireNonNull(folder.listFiles())) {
@@ -65,24 +73,66 @@ public class FileManager {
             e.printStackTrace();
         }
     }
-    public ArrayList<String> readSettings() throws IOException {
-        ArrayList<String> settings = new ArrayList<>();
+    public Settings readSettings() throws IOException {
+        Settings settings = new Settings();
         File file = new File("settings.ini");
         if(!file.exists()){
             if(!file.createNewFile()){
                 JOptionPane.showMessageDialog(null, "Не удалось создать файл настроек");
             }
-            writeSettings(20, "Светлая");
+            writeSettings(new Settings());
         }
         BufferedReader br = new BufferedReader(new FileReader("settings.ini"));
-        settings.add(br.readLine());
-        settings.add(br.readLine());
+        settings.fontSize = Integer.parseInt(br.readLine());
+        settings.theme = br.readLine();
+        settings.disks.clear();
+        String line = "";
+        while((line = br.readLine())!=null){
+            settings.disks.add(new Disk(line.split(", ")[0], line.split(", ")[1], line.split(", ")[2]));
+        }
+        System.out.println("READSETTINGS FOUND "+settings.disks.size());
         br.close();
         return settings;
     }
-    public void writeSettings(int font, String theme) throws IOException {
+    public void writeSettings(Settings settings) throws IOException {
+        int badFolders = checkSettings(settings);
+        if(badFolders!=0){
+            System.out.println("Found and deleted "+badFolders+" bad folders");
+        }
         BufferedWriter bw = new BufferedWriter(new FileWriter("settings.ini"));
-        bw.write(font+"\n"+theme+"\n");
+        bw.write(settings.fontSize+"\n"+settings.theme+"\n");
+        for (Disk disk:settings.disks){
+            bw.write(disk.folder+", "+disk.firm+", "+disk.model+"\n");
+        }
         bw.close();
+    }
+    public void copyDirectory(String sourceDirectoryLocation, String destinationDirectoryLocation) throws IOException {
+        new Thread(() -> {
+            try {
+                tasks++;
+                JOptionPane.showMessageDialog(null, "Начато копирования содержимого папки");
+                long time = System.currentTimeMillis()/100;
+                File sourceDirectory = new File(sourceDirectoryLocation);
+                File destinationDirectory = new File(destinationDirectoryLocation);
+                FileUtils.copyDirectory(sourceDirectory, destinationDirectory);
+                double difTime = (double)(System.currentTimeMillis()/100-time)/10;
+                JOptionPane.showMessageDialog(null, "Копирование папки завершено успешно за "+difTime+" секунд");
+                tasks--;
+            } catch (IOException e) {
+                tasks--;
+                throw new RuntimeException(e);
+            }
+        }).start();
+    }
+    public int checkSettings(Settings settings){
+        int bad = 0;
+        for (int i = 0; i < settings.disks.size(); i++) {
+            if(!new File(settings.disks.get(i).folder).exists()){
+                settings.disks.remove(i);
+                bad++;
+                i--;
+            }
+        }
+        return bad;
     }
 }

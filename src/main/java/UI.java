@@ -15,12 +15,15 @@ import java.util.*;
 
 public class UI extends JFrame {
     public FileManager fm = new FileManager();
-    String defLayoutSet = "shrink, grow, wmin 100";
+    public DiskManager dm = new DiskManager();
+    String defLayoutSet = "shrink, grow, wmin 100, span 2";
     String defLayoutSetHalf = "shrink, grow, wmin 50";
     Font font = new Font("Arial", Font.PLAIN, 11);
-    int fontSize = 11;
-    String theme = "Серая";
+    Settings settings = new Settings();
     String version ="v1.0.1";
+    ArrayList<Disk> disks = new ArrayList<>();
+    String filterFirm = "";
+    String filterModel = "";
     public UI(){
         super("NDisk");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -36,44 +39,39 @@ public class UI extends JFrame {
             //No icons for you
         }
         try{
-            fontSize = Integer.parseInt(fm.readSettings().get(0));
-            font = new Font("Arial", Font.PLAIN, fontSize);
-            theme=fm.readSettings().get(1);
+            settings = fm.readSettings();
+            disks.addAll(settings.disks);
+            font = new Font("Arial", Font.PLAIN, settings.fontSize);
             updateTheme();
         }catch (Exception exception){
             //settings failed
         }
-        /*try{
-            fontSize = Integer.parseInt(fm.readSettings().get(0));
-            font = new Font("Arial", Font.PLAIN, fontSize);
-            theme=fm.readSettings().get(1);
-            updateTheme();
-            UIDefaults defaults = UIManager.getDefaults();
-            Enumeration<Object> keys = defaults.keys();
-
-            while (keys.hasMoreElements()) {
-                Object key = keys.nextElement();
-                Object value = defaults.get(key);
-                System.out.println(key + " = " + value);
-            }
-        }catch (Exception exception){
-
-        }*/
-        /*        try {
-            // Попробуйте Nimbus
-            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
-                if ("GTK+".equals(info.getName())) {
-                    UIManager.setLookAndFeel(info.getClassName());
-                    break;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while(true) {
+                    try {
+                        System.out.println(fm.tasks);
+                        if (fm.tasks == 0) {
+                            fm.tasksL.setText("Все задачи выполнены!");
+                        } else {
+                            switch ((int) (System.currentTimeMillis()/1000 % 6)) {
+                                case 0 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + "    ");
+                                case 1 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + " .  ");
+                                case 2 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + " .. ");
+                                case 3 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + " ...");
+                                case 4 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + "  ..");
+                                case 5 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + "   .");
+                            }
+                            System.out.println((int) (System.currentTimeMillis()/1000 % 6));
+                        }
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
             }
-            // Если Nimbus недоступен, используйте системный LAF (Windows, GTK и т.д.)
-            if (UIManager.getLookAndFeel().getName().equals("Metal")) {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            }
-        } catch (Exception e) {
-            e.printStackTrace(); // Обработка ошибок при загрузке LAF
-        }*/
+        }).start();
         main();
     }
     private void setFont(Container container, Font font) {
@@ -92,172 +90,158 @@ public class UI extends JFrame {
     }
     public void main(){
         clear();
+        JButton getDisk = new JButton("Найти диск");
+        getDisk.addActionListener(e -> getDisk());
+        add(getDisk, defLayoutSet);
+        JButton addDisk = new JButton("Добавить диск");
+        addDisk.addActionListener(e -> addDisk());
+        add(addDisk, defLayoutSet);
+        JButton settingsB = new JButton("Настройки");
+        settingsB.addActionListener(e -> settings());
+        add(settingsB, defLayoutSet);
+        ender();
+    }
+    public void getDisk(){
+        clear();
+        JLabel modelsLa = new JLabel("Модель");
+        JTextField modelsT = new JTextField(30);
+        add(modelsLa, defLayoutSet);
+        add(modelsT, defLayoutSet+", wrap");
         JLabel firmL = new JLabel("Производитель");
-        add(firmL,  defLayoutSet+ ", span 2");
-        JLabel modelL = new JLabel("Модель");
-        add(modelL, defLayoutSet+ ", span 2");
-        JButton settings = new JButton("Настройки");
-        add(settings, defLayoutSet+ ", wrap, span 2 2");
-        settings.addActionListener(e -> settings());
-        JTextField firmT = new JTextField();
-        add(firmT,  defLayoutSet+ ", span 2");
-        JTextField modelT = new JTextField();
-        add(modelT, defLayoutSet+", span 2, wrap");
-        DefaultListModel<String> firmM = new DefaultListModel<>();
-        JList<String> firm = new JList<>(firmM);
-        add(new JScrollPane(firm), defLayoutSet+", span 2");
-        fillList(firmM, fm.getFolders(fm.getCurFolder()), "");
-        DefaultListModel<String> modelM = new DefaultListModel<>();
-        JList<String> model = new JList<>(modelM);
-        model.setVisible(false);
-        add(new JScrollPane(model), defLayoutSet+", span 2");
-        firm.addListSelectionListener(e -> {
-            modelT.setText("");
-            modelM.clear();
-            System.out.println("checking on "+firm.getSelectedValue());
-            if(firm.getSelectedValue()==null){
-                model.setVisible(false);
-            }else {
-                fillList(modelM, fm.getFolders(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()), firm.getSelectedValue())), "");
-//            for (File folder:fm.getFolders(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()), firm.getSelectedValue().toString()))){
-//                modelM.addElement(folder.getName());
-//            }
-                model.setVisible(modelM.getSize() != 0);
-            }
-            pack();
-        });
-        JButton confirm = new JButton("Открыть");
-        add(confirm, defLayoutSet+", span 2, wrap");
-        confirm.addActionListener(e -> {
-            if(firm.getSelectedValue()==null){
-                JOptionPane.showMessageDialog(null, "Необходимо выбрать производителя");
-                return;
-            }
-            if(model.getSelectedValue()==null){
-                JOptionPane.showMessageDialog(null, "Необходимо выбрать модель");
-                return;
-            }
-            fm.openFolder(fm.selectSubFolder(fm.getFolders(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()),firm.getSelectedValue())),model.getSelectedValue()));
-        });
+        JTextField firmT = new JTextField(30);
+        JLabel firmA = new JLabel("-");
+        add(firmL, defLayoutSet);
+        add(firmT, defLayoutSet);
+        add(firmA, defLayoutSet+", wrap");
+        DefaultListModel<String> modelsM = new DefaultListModel<>();
+        JList<String> modelsL = new JList<>(modelsM);
+        updateDisks();
+        fillList(modelsM);
+        add(modelsL, defLayoutSet+", span 6, wrap");
         firmT.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
                 super.keyReleased(e);
-                fillList(firmM, fm.getFolders(fm.getCurFolder()), firmT.getText());
+                String c;
+                if(firmT.getText().length()!=0){
+                    if(dm.filterDisks(settings.disks, firmT.getText(), DiskManager.IDEAL_INCORPORATION, DiskManager.BY_FIRM).size()!=0){
+                        c="+";
+                    }else{
+                        c="x";
+                    }
+                }else{
+                    c="-";
+                }
+                if(!c.equals(firmA.getText())){
+                    if(c.equals("+")) {
+                        filterFirm = firmT.getText();
+                    }else{
+                        filterFirm = "";
+                    }
+                    updateDisks();
+                    fillList(modelsM);
+                }
+                firmA.setText(c);
             }
         });
-        modelT.addKeyListener(new KeyAdapter() {
+        modelsT.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
                 super.keyReleased(e);
-                if(firm.getSelectedValue()!=null) {
-                    fillList(modelM, fm.getFolders(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()), firm.getSelectedValue())), modelT.getText());
-                }
+                filterModel = modelsT.getText();
+                updateDisks();
+                fillList(modelsM);
             }
         });
-        JButton adderFirm = new JButton("Добавить");
-        adderFirm.addActionListener(e -> {
-            if(Objects.equals(firmT.getText(), "")){
-                JOptionPane.showMessageDialog(null, "Сначала введите название производителя в поле \"Производитель\", и попробуйте ещё раз");
-                return;
-            }
-            if(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()), firmT.getText())!=null){
-                JOptionPane.showMessageDialog(null, "Такой производитель уже указан");
-                return;
-            }
-            if(fm.createFolder(fm.getCurFolder(), firmT.getText())){
-                JOptionPane.showMessageDialog(null, "Производитель был добавлен успешно");
-                fillList(firmM, fm.getFolders(fm.getCurFolder()), firmT.getText());
-                firm.setVisible(true);
-            }else{
-                JOptionPane.showMessageDialog(null, "Произошла неизвестная ошибка");
-            }
-        });
-        add(adderFirm, defLayoutSetHalf);
-        JButton removerFirm = new JButton("Удалить");
-        removerFirm.addActionListener(e -> {
-            if(firm.getSelectedValue()==null){
-                JOptionPane.showMessageDialog(null, "Выберите производителя в списке и попробуйте ещё раз");
-                return;
-            }
-            int confirmed = JOptionPane.showConfirmDialog(null, "Папка производителя и все файлы находящиеся в ней будут удалены, Вы действительно хотите продолжить?", "Удаление", JOptionPane.YES_NO_OPTION);
-            if(confirmed==JOptionPane.YES_OPTION) {
-                if (fm.deleteFolder(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()), firm.getSelectedValue()))) {
-                    JOptionPane.showMessageDialog(null, "Производитель был удалён успешно");
-                    fillList(firmM, fm.getFolders(fm.getCurFolder()), firmT.getText());
-                    firm.setVisible(firmM.getSize()!=0);
-                } else {
-                    JOptionPane.showMessageDialog(null, "Произошла неизвестная ошибка");
-                }
-            }
-        });
-        add(removerFirm, defLayoutSetHalf);
-
-        JButton adderModel = new JButton("Добавить");
-        adderModel.addActionListener(e -> {
-            if(firm.getSelectedValue()==null){
-                JOptionPane.showMessageDialog(null, "Выберите производителя и попробуйте ещё раз");
-                return;
-            }
-            if(Objects.equals(modelT.getText(), "")){
-                JOptionPane.showMessageDialog(null, "Введите название модели в поле \"Модель\" и попробуйте ещё раз");
-                return;
-            }
-            if(fm.selectSubFolder(fm.getFolders(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()), firm.getSelectedValue())), modelT.getText())!=null){
-                JOptionPane.showMessageDialog(null, "Такая модель уже указана");
-                return;
-            }
-            if(fm.createFolder(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()), firm.getSelectedValue()), modelT.getText())){
-                JOptionPane.showMessageDialog(null, "Модель была добавлена успешно");
-                fillList(modelM, fm.getFolders(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()), firm.getSelectedValue())), modelT.getText());
-                model.setVisible(true);
-            }else{
-                JOptionPane.showMessageDialog(null, "Произошла неизвестная ошибка");
-            }
-        });
-        add(adderModel, defLayoutSetHalf);
-        JButton removerModel = new JButton("Удалить");
-        removerModel.addActionListener(e -> {
-            if(firm.getSelectedValue()==null){
-                JOptionPane.showMessageDialog(null, "Выберите производителя и попробуйте ещё раз");
-                return;
-            }
-            if(model.getSelectedValue()==null){
-                JOptionPane.showMessageDialog(null, "Выберите модель в списке и попробуйте ещё раз");
-                return;
-            }
-            int confirmed = JOptionPane.showConfirmDialog(null, "Папка модели и все файлы находящиеся в ней будут удалены, Вы действительно хотите продолжить?", "Удаление", JOptionPane.YES_NO_OPTION);
-            if(confirmed==JOptionPane.YES_OPTION) {
-                if (fm.deleteFolder(fm.selectSubFolder(fm.getFolders(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()), firm.getSelectedValue())), model.getSelectedValue()))) {
-                    JOptionPane.showMessageDialog(null, "Модель была удалена успешно");
-                    fillList(modelM, fm.getFolders(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()), firm.getSelectedValue())), modelT.getText());
-                    model.setVisible(modelM.getSize()!=0);
-                } else {
-                    JOptionPane.showMessageDialog(null, "Произошла неизвестная ошибка");
-                }
-            }
-        });
-        add(removerModel, defLayoutSetHalf);
+        JButton open = new JButton("Открыть");
+        open.setEnabled(false);
+        modelsL.addListSelectionListener(e -> open.setEnabled(modelsL.getSelectedIndex()!=-1));
+        open.addActionListener(e -> fm.openFolder(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()),disks.get(modelsL.getSelectedIndex()).folder)));
+        JButton back = new JButton("Назад");
+        back.addActionListener(e -> main());
+        add(open, defLayoutSet);
+        add(new JLabel(), defLayoutSet);
+        add(back, defLayoutSet);
         ender();
     }
-    public void fillList(DefaultListModel<String> model, ArrayList<File> folders, String filter){
-        filter=filter.toLowerCase();
-        model.clear();
-        for (File folder:folders) {
-            if(folder.getName().toLowerCase().contains(filter)) {
-                model.addElement(folder.getName());
+    public void addDisk(){
+        clear();
+        JLabel diskL = new JLabel("Расположение диска");
+        JTextField diskT = new JTextField(30);
+        diskT.setEditable(false);
+        JFileChooser diskF = new JFileChooser();
+        diskF.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        diskF.setAcceptAllFileFilterUsed(false);
+        JButton diskB = new JButton("...");
+        diskB.addActionListener(e ->{
+            int returnVal = diskF.showOpenDialog(UI.this);
+            if (returnVal == JFileChooser.APPROVE_OPTION) {
+                File selectedFolder = diskF.getSelectedFile();
+                diskT.setText(selectedFolder.getAbsolutePath());
             }
+        });
+        add(diskL, defLayoutSet);
+        add(diskT, defLayoutSet);
+        add(diskB, defLayoutSet+", wrap");
+        JLabel firmL = new JLabel("Производитель");
+        JTextField firmT = new JTextField();
+        add(firmL, defLayoutSet);
+        add(firmT, defLayoutSet+", wrap");
+        JLabel modelL = new JLabel("Модель");
+        JTextField modelT = new JTextField();
+        add(modelL, defLayoutSet);
+        add(modelT, defLayoutSet+", wrap");
+        JButton confirm = new JButton("Скопировать");
+        confirm.addActionListener(e -> {
+            System.out.println(diskT.getText().length());
+            if(diskT.getText().length()==0){
+                JOptionPane.showMessageDialog(null, "Выберите папку с диском и попробуйте ещё раз");
+                return;
+            }
+            if(modelT.getText().length()==0){
+                JOptionPane.showMessageDialog(null, "Введите модель на диске и попробуйте ещё раз");
+                return;
+            }
+            try {
+                if(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()), firmT.getText()+"_"+modelT.getText())!=null){
+                    JOptionPane.showMessageDialog(null, "Папка для такой модели уже существует");
+                }
+                fm.copyDirectory(diskT.getText(), fm.createFolder(fm.getCurFolder(), firmT.getText()+"_"+modelT.getText()).getPath());
+                settings.disks.add(new Disk(firmT.getText()+"_"+modelT.getText(), firmT.getText(), modelT.getText()));
+                fm.writeSettings(settings);
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(null, "Не удалось скопировать папку");
+            }
+
+        });
+        add(confirm, defLayoutSet);
+        add(fm.tasksL, defLayoutSet);
+        JButton back = new JButton("Назад");
+        back.addActionListener(e -> main());
+        add(back, defLayoutSet);
+        ender();
+    }
+    public void fillList(DefaultListModel<String> model){
+        model.clear();
+        for (Disk disk: disks) {
+            model.addElement(disk.model);
+        }
+        pack();
+    }
+    public void updateDisks(){
+        disks = settings.disks;
+        if(filterFirm.length()!=0){
+            disks = dm.filterDisks(disks, filterFirm, DiskManager.IDEAL_INCORPORATION, DiskManager.BY_FIRM);
+        }
+        if(filterModel.length()!=0){
+            disks = dm.filterDisks(disks, filterModel, DiskManager.BEST_INCORPORATION, DiskManager.BY_MODEL);
         }
     }
     public void settings(){
         clear();
         JLabel fontL = new JLabel("Размер шрифта (по умолчанию 20)");
         JTextField fontT = new JTextField("0");
-        try {
-            fontT.setText(String.valueOf(fm.readSettings().get(0)));
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(null, "Произошла неизвестная ошибка");
-        }
+        fontT.setText(String.valueOf(settings.fontSize));
         JButton fontB = new JButton("Подтвердить");
         fontB.addActionListener(e -> {
             if(Objects.equals(fontT.getText(), "")){
@@ -272,11 +256,10 @@ public class UI extends JFrame {
                 JOptionPane.showMessageDialog(null, "Максимальный допустимый размер шрифта - 50");
                 return;
             }
-            fontSize = Integer.parseInt(fontT.getText());
-            font = new Font("Arial", Font.PLAIN, fontSize);
+            settings.fontSize = Integer.parseInt(fontT.getText());
+            font = new Font("Arial", Font.PLAIN, settings.fontSize);
             try {
-                System.out.println("WRITING TO SETTINGS FONTSIZE: "+fontSize);
-                fm.writeSettings(fontSize, theme);
+                fm.writeSettings(settings);
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(null, "Не удалось записать настройки");
             }
@@ -290,20 +273,15 @@ public class UI extends JFrame {
         themeC.addItem("Светлая");
         themeC.addItem("Серая");
         themeC.addItem("Тёмная");
-        if(Objects.equals(theme, "Светлая")){
-            themeC.setSelectedIndex(0);
+        switch (settings.theme) {
+            case "Светлая" ->themeC.setSelectedIndex(0);
+            case "Серая" -> themeC.setSelectedIndex(1);
+            case "Тёмная" -> themeC.setSelectedIndex(2);
         }
-        if(Objects.equals(theme, "Серая")){
-            themeC.setSelectedIndex(1);
-        }
-        if(Objects.equals(theme, "Тёмная")){
-            themeC.setSelectedIndex(2);
-        }
-
-        themeC.addActionListener(e ->{
+            themeC.addActionListener(e ->{
             try {
-                theme = Objects.requireNonNull(themeC.getSelectedItem()).toString();
-                fm.writeSettings(fontSize, theme);
+                settings.theme = Objects.requireNonNull(themeC.getSelectedItem()).toString();
+                fm.writeSettings(settings);
                 if(!updateTheme()){
                     throw new Exception();
                 }
@@ -313,7 +291,7 @@ public class UI extends JFrame {
             }
         });
         add(themeL, defLayoutSet);
-        add(themeC, defLayoutSet+", span 2, wrap");
+        add(themeC, defLayoutSet+", span 4, wrap");
         JButton dev=new JButton("Developed by Morozov "+ version);
         dev.setFocusPainted(false);
         dev.setBorderPainted(false);
@@ -332,13 +310,13 @@ public class UI extends JFrame {
         JButton back = new JButton("Назад");
         back.addActionListener(e -> main());
         add(back, defLayoutSet);
-        add(dev, defLayoutSet+", span 2");
+        add(dev, defLayoutSet);
         ender();
-        dev.setFont(new Font("Arial", Font.PLAIN, (int) (fontSize*0.7)));
+        dev.setFont(new Font("Arial", Font.PLAIN, (int) (settings.fontSize*0.7)));
     }
     public boolean updateTheme(){
         try {
-            switch (theme) {
+            switch (settings.theme) {
                 case "Тёмная" -> {
                     UIManager.setLookAndFeel(new FlatMacDarkLaf());
                     getContentPane().setBackground(new Color(25, 25, 25));
