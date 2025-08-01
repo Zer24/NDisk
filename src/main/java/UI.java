@@ -20,7 +20,7 @@ public class UI extends JFrame {
     String defLayoutSetHalf = "shrink, grow, wmin 50";
     Font font = new Font("Arial", Font.PLAIN, 11);
     Settings settings = new Settings();
-    String version ="v1.0.1";
+    String version ="v2.0.0";
     ArrayList<Disk> disks = new ArrayList<>();
     String filterFirm = "";
     String filterModel = "";
@@ -46,29 +46,26 @@ public class UI extends JFrame {
         }catch (Exception exception){
             //settings failed
         }
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while(true) {
-                    try {
-                        System.out.println(fm.tasks);
-                        if (fm.tasks == 0) {
-                            fm.tasksL.setText("Все задачи выполнены!");
-                        } else {
-                            switch ((int) (System.currentTimeMillis()/1000 % 6)) {
-                                case 0 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + "    ");
-                                case 1 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + " .  ");
-                                case 2 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + " .. ");
-                                case 3 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + " ...");
-                                case 4 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + "  ..");
-                                case 5 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + "   .");
-                            }
-                            System.out.println((int) (System.currentTimeMillis()/1000 % 6));
+        new Thread(() -> {
+            while(true) {
+                try {
+                    System.out.println(fm.tasks);
+                    if (fm.tasks == 0) {
+                        fm.tasksL.setText("Все задачи выполнены!");
+                    } else {
+                        switch ((int) (System.currentTimeMillis()/1000 % 6)) {
+                            case 0 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + "    ");
+                            case 1 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + " .  ");
+                            case 2 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + " .. ");
+                            case 3 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + " ...");
+                            case 4 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + "  ..");
+                            case 5 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + "   .");
                         }
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
+                        System.out.println((int) (System.currentTimeMillis()/1000 % 6));
                     }
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
                 }
             }
         }).start();
