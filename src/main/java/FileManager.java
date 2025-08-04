@@ -1,17 +1,13 @@
-import org.apache.commons.io.FileUtils;
-
 import javax.swing.*;
 import java.awt.*;
 import java.io.*;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class FileManager {
-    int tasks = 0;
-    JLabel tasksL = new JLabel("Выполняется задач: "+tasks);
-    public File getCurFolder(){
-        return new File(".");
-    }
+    ArrayList<JLabel> tasks = new ArrayList<>();
     public ArrayList<File> getFolders(File parentFolder){
         File[] filesM = parentFolder.listFiles();
         if (filesM != null) {
@@ -36,29 +32,6 @@ public class FileManager {
         }
         return null;
     }
-
-    public File createFolder(File parentFolder, String name){
-        System.out.println("Creating folder "+name+" at folder "+parentFolder.getName());
-        File folder = new File(parentFolder, name);
-        if(!folder.isDirectory()) {
-            folder.mkdir();
-        }
-        return folder;
-    }
-    public boolean deleteFolder(File folder){
-        for (File file : Objects.requireNonNull(folder.listFiles())) {
-            if (file.isDirectory()) {
-                if (!deleteFolder(file)) {
-                    return false;
-                }
-            } else {
-                if (!file.delete()) {
-                    return false;
-                }
-            }
-        }
-        return folder.delete();
-    }
     public void openFolder(File folder){
         try {
             Desktop desktop = Desktop.getDesktop();
@@ -73,20 +46,16 @@ public class FileManager {
             e.printStackTrace();
         }
     }
-    public Settings readSettings() throws IOException {
+    public Settings readSettings(Preferences preferences) throws IOException {
         Settings settings = new Settings();
-        File file = new File("settings.ini");
-        if(!file.exists()){
-            if(!file.createNewFile()){
-                JOptionPane.showMessageDialog(null, "Не удалось создать файл настроек");
-            }
-            writeSettings(new Settings());
+        Path path = Paths.get(preferences.workingFolder, "settings.ini");
+        if(!Files.exists(path)){
+            Files.createFile(path);
+            writeSettings(new Settings(), preferences);
         }
-        BufferedReader br = new BufferedReader(new FileReader("settings.ini"));
-        settings.fontSize = Integer.parseInt(br.readLine());
-        settings.theme = br.readLine();
+        BufferedReader br = Files.newBufferedReader(path);
         settings.disks.clear();
-        String line = "";
+        String line;
         while((line = br.readLine())!=null){
             settings.disks.add(new Disk(line.split(", ")[0], line.split(", ")[1], line.split(", ")[2]));
         }
@@ -94,40 +63,97 @@ public class FileManager {
         br.close();
         return settings;
     }
-    public void writeSettings(Settings settings) throws IOException {
-        int badFolders = checkSettings(settings);
+    public Preferences readPreferences() throws IOException {
+        Preferences preferences = new Preferences();
+        File file = new File("preferences.ini");
+        if(!file.exists()){
+            if(!file.createNewFile()){
+                JOptionPane.showMessageDialog(null, "Не удалось создать файл настроек");
+            }
+            writePreferences(new Preferences());
+        }
+        BufferedReader br = new BufferedReader(new FileReader("preferences.ini"));
+        preferences.fontSize = Integer.parseInt(br.readLine());
+        preferences.theme = br.readLine();
+        preferences.workingFolder = br.readLine();
+        br.close();
+        return preferences;
+    }
+    public void writeSettings(Settings settings, Preferences preferences) throws IOException {
+        int badFolders = checkSettings(settings, preferences);
         if(badFolders!=0){
             System.out.println("Found and deleted "+badFolders+" bad folders");
         }
-        BufferedWriter bw = new BufferedWriter(new FileWriter("settings.ini"));
-        bw.write(settings.fontSize+"\n"+settings.theme+"\n");
+        BufferedWriter bw = Files.newBufferedWriter(Paths.get(preferences.workingFolder, "settings.ini"));
         for (Disk disk:settings.disks){
             bw.write(disk.folder+", "+disk.firm+", "+disk.model+"\n");
         }
         bw.close();
     }
-    public void copyDirectory(String sourceDirectoryLocation, String destinationDirectoryLocation) throws IOException {
+    public void writePreferences(Preferences preferences) throws IOException {
+        BufferedWriter bw = Files.newBufferedWriter(Paths.get("preferences.ini"));
+        bw.write(preferences.fontSize+"\n"+preferences.theme+"\n"+preferences.workingFolder+"\n");
+        bw.close();
+    }
+    public void copyDirectory(UI ui, Path sourceDir, Path targetDir) throws IOException {
+        if (!Files.exists(targetDir)) {
+            Files.createDirectories(targetDir);
+        }
+
+        AtomicLong totalFiles = new AtomicLong(0);
+        AtomicLong copiedFiles = new AtomicLong(0);
+
+        long time = System.currentTimeMillis();
+        JLabel task = new JLabel("");
+        tasks.add(task);
+        ui.add(task, ui.defLayoutSet+", span 6, wrap");
         new Thread(() -> {
             try {
-                tasks++;
-                JOptionPane.showMessageDialog(null, "Начато копирования содержимого папки");
-                long time = System.currentTimeMillis()/100;
-                File sourceDirectory = new File(sourceDirectoryLocation);
-                File destinationDirectory = new File(destinationDirectoryLocation);
-                FileUtils.copyDirectory(sourceDirectory, destinationDirectory);
-                double difTime = (double)(System.currentTimeMillis()/100-time)/10;
-                JOptionPane.showMessageDialog(null, "Копирование папки завершено успешно за "+difTime+" секунд");
-                tasks--;
+                task.setText("Выполняется подсчёт копируемых файлов...");
+                ui.ender();
+                Files.walkFileTree(sourceDir, new SimpleFileVisitor<>() {
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                        totalFiles.incrementAndGet();
+                        return FileVisitResult.CONTINUE;
+                    }
+                    @Override
+                    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
+                // Копируем файлы и папки (рекурсивно)
+                Files.walkFileTree(sourceDir, new SimpleFileVisitor<>() {
+                    @Override
+                    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                        Path target = targetDir.resolve(sourceDir.relativize(dir));
+                        if (!Files.exists(target)) {
+                            Files.createDirectories(target);
+                        }
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                        Path target = targetDir.resolve(sourceDir.relativize(file));
+                        Files.copy(file, target, StandardCopyOption.REPLACE_EXISTING);
+                        copiedFiles.incrementAndGet();
+                        task.setText(copiedFiles.get()*100 / totalFiles.get()+"% "+copiedFiles.get()+"/"+ totalFiles.get());
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
             } catch (IOException e) {
-                tasks--;
                 throw new RuntimeException(e);
             }
+            JOptionPane.showMessageDialog(null, "Копирование было завершено за "+(double)((System.currentTimeMillis()-time)/100)/10 +" секунд");
+            ui.remove(task);
+            tasks.remove(task);
         }).start();
     }
-    public int checkSettings(Settings settings){
+    public int checkSettings(Settings settings, Preferences preferences){
         int bad = 0;
         for (int i = 0; i < settings.disks.size(); i++) {
-            if(!new File(settings.disks.get(i).folder).exists()){
+            if(!Files.exists(Paths.get(preferences.workingFolder, settings.disks.get(i).folder))){
                 settings.disks.remove(i);
                 bad++;
                 i--;

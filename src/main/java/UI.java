@@ -10,6 +10,7 @@ import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.*;
 
@@ -20,7 +21,8 @@ public class UI extends JFrame {
     String defLayoutSetHalf = "shrink, grow, wmin 50";
     Font font = new Font("Arial", Font.PLAIN, 11);
     Settings settings = new Settings();
-    String version ="v2.0.0";
+    Preferences preferences = new Preferences();
+    String version ="v2.1.0";
     ArrayList<Disk> disks = new ArrayList<>();
     String filterFirm = "";
     String filterModel = "";
@@ -39,36 +41,37 @@ public class UI extends JFrame {
             //No icons for you
         }
         try{
-            settings = fm.readSettings();
+            preferences = fm.readPreferences();
+            settings = fm.readSettings(preferences);
             disks.addAll(settings.disks);
-            font = new Font("Arial", Font.PLAIN, settings.fontSize);
+            font = new Font("Arial", Font.PLAIN, preferences.fontSize);
             updateTheme();
         }catch (Exception exception){
             //settings failed
         }
-        new Thread(() -> {
-            while(true) {
-                try {
-                    System.out.println(fm.tasks);
-                    if (fm.tasks == 0) {
-                        fm.tasksL.setText("Все задачи выполнены!");
-                    } else {
-                        switch ((int) (System.currentTimeMillis()/1000 % 6)) {
-                            case 0 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + "    ");
-                            case 1 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + " .  ");
-                            case 2 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + " .. ");
-                            case 3 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + " ...");
-                            case 4 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + "  ..");
-                            case 5 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + "   .");
-                        }
-                        System.out.println((int) (System.currentTimeMillis()/1000 % 6));
-                    }
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }).start();
+//        new Thread(() -> {
+//            while(true) {
+//                try {
+//                    System.out.println(fm.tasks);
+//                    if (fm.tasks == 0) {
+//                        fm.tasksL.setText("Все задачи выполнены!");
+//                    } else {
+//                        switch ((int) (System.currentTimeMillis()/1000 % 6)) {
+//                            case 0 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + "    ");
+//                            case 1 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + " .  ");
+//                            case 2 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + " .. ");
+//                            case 3 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + " ...");
+//                            case 4 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + "  ..");
+//                            case 5 -> fm.tasksL.setText("Выполняется задач: " + fm.tasks + "   .");
+//                        }
+//                        System.out.println((int) (System.currentTimeMillis()/1000 % 6));
+//                    }
+//                    Thread.sleep(1000);
+//                } catch (InterruptedException e) {
+//                    throw new RuntimeException(e);
+//                }
+//            }
+//        }).start();
         main();
     }
     private void setFont(Container container, Font font) {
@@ -100,6 +103,7 @@ public class UI extends JFrame {
     }
     public void getDisk(){
         clear();
+        fm.checkSettings(settings, preferences);
         JLabel modelsLa = new JLabel("Модель");
         JTextField modelsT = new JTextField(30);
         add(modelsLa, defLayoutSet);
@@ -153,7 +157,7 @@ public class UI extends JFrame {
         JButton open = new JButton("Открыть");
         open.setEnabled(false);
         modelsL.addListSelectionListener(e -> open.setEnabled(modelsL.getSelectedIndex()!=-1));
-        open.addActionListener(e -> fm.openFolder(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()),disks.get(modelsL.getSelectedIndex()).folder)));
+        open.addActionListener(e -> fm.openFolder(fm.selectSubFolder(fm.getFolders(new File(preferences.workingFolder)),disks.get(modelsL.getSelectedIndex()).folder)));
         JButton back = new JButton("Назад");
         back.addActionListener(e -> main());
         add(open, defLayoutSet);
@@ -200,22 +204,26 @@ public class UI extends JFrame {
                 return;
             }
             try {
-                if(fm.selectSubFolder(fm.getFolders(fm.getCurFolder()), firmT.getText()+"_"+modelT.getText())!=null){
+                if(fm.selectSubFolder(fm.getFolders(new File(preferences.workingFolder)), firmT.getText()+"_"+modelT.getText())!=null){
                     JOptionPane.showMessageDialog(null, "Папка для такой модели уже существует");
+                    return;
                 }
-                fm.copyDirectory(diskT.getText(), fm.createFolder(fm.getCurFolder(), firmT.getText()+"_"+modelT.getText()).getPath());
+                fm.copyDirectory(this, Path.of(diskT.getText()), Path.of(preferences.workingFolder).resolve( firmT.getText() + "_" + modelT.getText()));
                 settings.disks.add(new Disk(firmT.getText()+"_"+modelT.getText(), firmT.getText(), modelT.getText()));
-                fm.writeSettings(settings);
+                fm.writeSettings(settings, preferences);
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(null, "Не удалось скопировать папку");
             }
 
         });
         add(confirm, defLayoutSet);
-        add(fm.tasksL, defLayoutSet);
+        add(new JLabel(""), defLayoutSet);
         JButton back = new JButton("Назад");
         back.addActionListener(e -> main());
-        add(back, defLayoutSet);
+        add(back, defLayoutSet+", wrap");
+        for (JLabel task: fm.tasks){
+            add(task, defLayoutSet+", span 6, wrap");
+        }
         ender();
     }
     public void fillList(DefaultListModel<String> model){
@@ -238,7 +246,7 @@ public class UI extends JFrame {
         clear();
         JLabel fontL = new JLabel("Размер шрифта (по умолчанию 20)");
         JTextField fontT = new JTextField("0");
-        fontT.setText(String.valueOf(settings.fontSize));
+        fontT.setText(String.valueOf(preferences.fontSize));
         JButton fontB = new JButton("Подтвердить");
         fontB.addActionListener(e -> {
             if(Objects.equals(fontT.getText(), "")){
@@ -253,10 +261,10 @@ public class UI extends JFrame {
                 JOptionPane.showMessageDialog(null, "Максимальный допустимый размер шрифта - 50");
                 return;
             }
-            settings.fontSize = Integer.parseInt(fontT.getText());
-            font = new Font("Arial", Font.PLAIN, settings.fontSize);
+            preferences.fontSize = Integer.parseInt(fontT.getText());
+            font = new Font("Arial", Font.PLAIN, preferences.fontSize);
             try {
-                fm.writeSettings(settings);
+                fm.writePreferences(preferences);
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(null, "Не удалось записать настройки");
             }
@@ -270,15 +278,15 @@ public class UI extends JFrame {
         themeC.addItem("Светлая");
         themeC.addItem("Серая");
         themeC.addItem("Тёмная");
-        switch (settings.theme) {
+        switch (preferences.theme) {
             case "Светлая" ->themeC.setSelectedIndex(0);
             case "Серая" -> themeC.setSelectedIndex(1);
             case "Тёмная" -> themeC.setSelectedIndex(2);
         }
             themeC.addActionListener(e ->{
             try {
-                settings.theme = Objects.requireNonNull(themeC.getSelectedItem()).toString();
-                fm.writeSettings(settings);
+                preferences.theme = Objects.requireNonNull(themeC.getSelectedItem()).toString();
+                fm.writePreferences(preferences);
                 if(!updateTheme()){
                     throw new Exception();
                 }
@@ -289,6 +297,29 @@ public class UI extends JFrame {
         });
         add(themeL, defLayoutSet);
         add(themeC, defLayoutSet+", span 4, wrap");
+        JLabel folderL = new JLabel("Папка хранения дисков");
+        JTextField folderT = new JTextField(preferences.workingFolder);
+        folderT.setEditable(false);
+        JFileChooser folderF = new JFileChooser();
+        folderF.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        folderF.setAcceptAllFileFilterUsed(false);
+        JButton folderB = new JButton("...");
+        folderB.addActionListener(e ->{
+            int returnVal = folderF.showOpenDialog(UI.this);
+            if (returnVal == JFileChooser.APPROVE_OPTION) {
+                File selectedFolder = folderF.getSelectedFile();
+                folderT.setText(selectedFolder.getAbsolutePath());
+                preferences.workingFolder=selectedFolder.getAbsolutePath();
+                try {
+                    fm.writePreferences(preferences);
+                } catch (IOException ex) {
+                    JOptionPane.showMessageDialog(null, "Не удалось записать настройки");
+                }
+            }
+        });
+        add(folderL, defLayoutSet);
+        add(folderT, defLayoutSet);
+        add(folderB, defLayoutSet+", wrap");
         JButton dev=new JButton("Developed by Morozov "+ version);
         dev.setFocusPainted(false);
         dev.setBorderPainted(false);
@@ -309,11 +340,11 @@ public class UI extends JFrame {
         add(back, defLayoutSet);
         add(dev, defLayoutSet);
         ender();
-        dev.setFont(new Font("Arial", Font.PLAIN, (int) (settings.fontSize*0.7)));
+        dev.setFont(new Font("Arial", Font.PLAIN, (int) (preferences.fontSize*0.7)));
     }
     public boolean updateTheme(){
         try {
-            switch (settings.theme) {
+            switch (preferences.theme) {
                 case "Тёмная" -> {
                     UIManager.setLookAndFeel(new FlatMacDarkLaf());
                     getContentPane().setBackground(new Color(25, 25, 25));
