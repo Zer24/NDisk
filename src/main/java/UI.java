@@ -15,14 +15,15 @@ import java.util.List;
 import java.util.*;
 
 public class UI extends JFrame {
-    public FileManager fm = new FileManager();
-    public DiskManager dm = new DiskManager();
+    boolean debug = false;
+    public FileManager fm = new FileManager(debug);
+    public DiskManager dm = new DiskManager(debug);
     String defLayoutSet = "shrink, grow, wmin 100, span 2";
     String defLayoutSetHalf = "shrink, grow, wmin 50";
     Font font = new Font("Arial", Font.PLAIN, 11);
     Settings settings = new Settings();
     Preferences preferences = new Preferences();
-    String version ="v2.1.0";
+    String version ="v2.2.1";
     ArrayList<Disk> disks = new ArrayList<>();
     String filterFirm = "";
     String filterModel = "";
@@ -194,7 +195,7 @@ public class UI extends JFrame {
         add(modelT, defLayoutSet+", wrap");
         JButton confirm = new JButton("Скопировать");
         confirm.addActionListener(e -> {
-            System.out.println(diskT.getText().length());
+            if(debug)System.out.println(diskT.getText().length());
             if(diskT.getText().length()==0){
                 JOptionPane.showMessageDialog(null, "Выберите папку с диском и попробуйте ещё раз");
                 return;
@@ -227,8 +228,10 @@ public class UI extends JFrame {
         ender();
     }
     public void fillList(DefaultListModel<String> model){
+        if(debug)System.out.println("Started filling list with "+disks.size());
         model.clear();
         for (Disk disk: disks) {
+            if(debug)System.out.println(disk);
             model.addElement(disk.model);
         }
         pack();
@@ -312,6 +315,7 @@ public class UI extends JFrame {
                 preferences.workingFolder=selectedFolder.getAbsolutePath();
                 try {
                     fm.writePreferences(preferences);
+                    settings = fm.readSettings(preferences);
                 } catch (IOException ex) {
                     JOptionPane.showMessageDialog(null, "Не удалось записать настройки");
                 }

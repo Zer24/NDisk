@@ -8,6 +8,10 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class FileManager {
     ArrayList<JLabel> tasks = new ArrayList<>();
+    boolean debug;
+    public FileManager(boolean debug){
+        this.debug=debug;
+    }
     public ArrayList<File> getFolders(File parentFolder){
         File[] filesM = parentFolder.listFiles();
         if (filesM != null) {
@@ -37,7 +41,7 @@ public class FileManager {
             Desktop desktop = Desktop.getDesktop();
             if (desktop.isSupported(Desktop.Action.OPEN)) {
                 desktop.open(folder);
-                System.out.println("Папка открыта в проводнике");
+                if(debug)System.out.println("Папка открыта в проводнике");
             } else {
                 JOptionPane.showMessageDialog(null, "Операция открытия папки не поддерживается на данной платформе.", "Ошибка", JOptionPane.ERROR_MESSAGE);
             }
@@ -59,7 +63,7 @@ public class FileManager {
         while((line = br.readLine())!=null){
             settings.disks.add(new Disk(line.split(", ")[0], line.split(", ")[1], line.split(", ")[2]));
         }
-        System.out.println("READSETTINGS FOUND "+settings.disks.size());
+        if(debug)System.out.println("READSETTINGS FOUND "+settings.disks.size());
         br.close();
         return settings;
     }
@@ -82,7 +86,7 @@ public class FileManager {
     public void writeSettings(Settings settings, Preferences preferences) throws IOException {
         int badFolders = checkSettings(settings, preferences);
         if(badFolders!=0){
-            System.out.println("Found and deleted "+badFolders+" bad folders");
+            if(debug)System.out.println("Found and deleted "+badFolders+" bad folders");
         }
         BufferedWriter bw = Files.newBufferedWriter(Paths.get(preferences.workingFolder, "settings.ini"));
         for (Disk disk:settings.disks){

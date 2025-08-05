@@ -8,4 +8,8 @@ public class Disk {
         this.firm=firm;
         this.model=model;
     }
+    @Override
+    public String toString(){
+        return "{"+folder+", "+firm+", "+model+"}";
+    }
 }

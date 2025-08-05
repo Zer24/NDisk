@@ -8,9 +8,12 @@ public class DiskManager {
     public static final int BY_FOLDER = 1;
     public static final int BY_FIRM = 2;
     public static final int BY_MODEL = 3;
-    public DiskManager() {
+    boolean debug;
+    public DiskManager(boolean debug) {
+        this.debug=debug;
     }
     public ArrayList<Disk> filterDisks(ArrayList<Disk> disks, String filter, boolean incorporation, int filterType){
+        if(debug)System.out.println("filterDisks started with "+disks.size());
         ArrayList<Disk> newDisks;
         if(incorporation) {
             newDisks = new ArrayList<>();
@@ -49,6 +52,7 @@ public class DiskManager {
                 });
             }
         }
+        if(debug)System.out.println("filterDisks ended with "+newDisks.size());
         return newDisks;
     }
     public int longestPrefix(String from, String filter){
