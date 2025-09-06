@@ -50,23 +50,6 @@ public class FileManager {
             e.printStackTrace();
         }
     }
-    public Settings readSettings(Preferences preferences) throws IOException {
-        Settings settings = new Settings();
-        Path path = Paths.get(preferences.workingFolder, "settings.ini");
-        if(!Files.exists(path)){
-            Files.createFile(path);
-            writeSettings(new Settings(), preferences);
-        }
-        BufferedReader br = Files.newBufferedReader(path);
-        settings.disks.clear();
-        String line;
-        while((line = br.readLine())!=null){
-            settings.disks.add(new Disk(line.split(", ")[0], line.split(", ")[1], line.split(", ")[2]));
-        }
-        if(debug)System.out.println("READSETTINGS FOUND "+settings.disks.size());
-        br.close();
-        return settings;
-    }
     public Preferences readPreferences() throws IOException {
         Preferences preferences = new Preferences();
         File file = new File("preferences.ini");
@@ -79,24 +62,14 @@ public class FileManager {
         BufferedReader br = new BufferedReader(new FileReader("preferences.ini"));
         preferences.fontSize = Integer.parseInt(br.readLine());
         preferences.theme = br.readLine();
+        preferences.stringToColors(br.readLine());
         preferences.workingFolder = br.readLine();
         br.close();
         return preferences;
     }
-    public void writeSettings(Settings settings, Preferences preferences) throws IOException {
-        int badFolders = checkSettings(settings, preferences);
-        if(badFolders!=0){
-            if(debug)System.out.println("Found and deleted "+badFolders+" bad folders");
-        }
-        BufferedWriter bw = Files.newBufferedWriter(Paths.get(preferences.workingFolder, "settings.ini"));
-        for (Disk disk:settings.disks){
-            bw.write(disk.folder+", "+disk.firm+", "+disk.model+"\n");
-        }
-        bw.close();
-    }
     public void writePreferences(Preferences preferences) throws IOException {
         BufferedWriter bw = Files.newBufferedWriter(Paths.get("preferences.ini"));
-        bw.write(preferences.fontSize+"\n"+preferences.theme+"\n"+preferences.workingFolder+"\n");
+        bw.write(preferences.fontSize+"\n"+preferences.theme+"\n"+preferences.colorsToString()+"\n"+preferences.workingFolder+"\n");
         bw.close();
     }
     public void copyDirectory(UI ui, Path sourceDir, Path targetDir) throws IOException {
@@ -153,16 +126,5 @@ public class FileManager {
             ui.remove(task);
             tasks.remove(task);
         }).start();
-    }
-    public int checkSettings(Settings settings, Preferences preferences){
-        int bad = 0;
-        for (int i = 0; i < settings.disks.size(); i++) {
-            if(!Files.exists(Paths.get(preferences.workingFolder, settings.disks.get(i).folder))){
-                settings.disks.remove(i);
-                bad++;
-                i--;
-            }
-        }
-        return bad;
     }
 }

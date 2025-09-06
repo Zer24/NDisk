@@ -3,12 +3,13 @@
     <output-path>$PROJECT_DIR$/out/artifacts/NDisk_jar</output-path>
     <root id="archive" name="NDisk.jar">
       <element id="module-output" name="NDisk" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/miglayout/miglayout-core/11.4.2/miglayout-core-11.4.2.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/commons-io/commons-io/2.15.1/commons-io-2.15.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/xerial/sqlite-jdbc/3.50.3.0/sqlite-jdbc-3.50.3.0.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/miglayout/miglayout-swing/11.4.2/miglayout-swing-11.4.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/miglayout/miglayout-core/11.4.2/miglayout-core-11.4.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/apache/commons/commons-lang3/3.12.0/commons-lang3-3.12.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/commons-io/commons-io/2.15.1/commons-io-2.15.1.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/formdev/flatlaf/3.6.1/flatlaf-3.6.1.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/apache/commons/commons-text/1.10.0/commons-text-1.10.0.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/apache/commons/commons-lang3/3.12.0/commons-lang3-3.12.0.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>
