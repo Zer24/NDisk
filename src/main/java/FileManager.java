@@ -1,9 +1,13 @@
+import net.miginfocom.swing.MigLayout;
+
 import javax.swing.*;
 import java.awt.*;
 import java.io.*;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class FileManager {
@@ -37,6 +41,9 @@ public class FileManager {
         return null;
     }
     public void openFolder(File folder){
+        if(folder == null){
+            JOptionPane.showMessageDialog(null, "Такой папки не существует! Обновите список");
+        }
         try {
             Desktop desktop = Desktop.getDesktop();
             if (desktop.isSupported(Desktop.Action.OPEN)) {
@@ -49,6 +56,56 @@ public class FileManager {
             JOptionPane.showMessageDialog(null, "Ошибка при открытии папки: " + e.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
         }
+    }
+    public int deleteArray(ArrayList<Disk> disks, String workingFolder){
+        if(debug)System.out.println(new File(workingFolder).toPath().resolve("rev_rev").toFile().getAbsolutePath());
+        int amo=0;
+        for (Disk disk: disks){
+            if(deleteFolderRecursively(new File(workingFolder).toPath().resolve(disk.folder).toFile())){
+                amo++;
+            }
+        }
+        return amo;
+    }
+    private boolean deleteFolderRecursively(File file){
+        if(file.isDirectory()){
+            try {
+                for (File inFile: Objects.requireNonNull(file.listFiles())){
+                    if(!deleteFolderRecursively(inFile)){
+                        return false;
+                    }
+                }
+            }catch (NullPointerException nullPointerException){
+                JOptionPane.showMessageDialog(null, "Указанная папка не существует!");
+                return false;
+            }
+        }
+        return file.delete();
+
+    }
+    public JPanel getTree(File folder){
+        JPanel panel = new JPanel();
+        panel.setLayout(new MigLayout("insets 0, gap 0px 0px"));
+        File[] filesArray = folder.listFiles();
+        ArrayList<File> files = new ArrayList<>(List.of(filesArray));
+        files.sort((o1, o2) -> o1.isDirectory() ? -1 : 1);
+        for (File file: files){
+            JPanel filePanel = new JPanel();
+            filePanel.setLayout(new MigLayout());
+            if(file.isDirectory()) {
+                JButton opener = new JButton("+");
+                opener.addActionListener(e -> {
+                    opener.setEnabled(false);
+                    opener.setBackground(new Color(40,40,40));
+                    filePanel.add(getTree(file), "gap 0px 0px, span 2");
+                    filePanel.revalidate();
+                });
+                filePanel.add(opener, "gap 0px 0px");
+            }
+            filePanel.add(new JLabel(file.getName(), JLabel.LEFT), "gap 0px 0px, wrap");
+            panel.add(filePanel, "grow, shrink, wrap");
+        }
+        return panel;
     }
     public Preferences readPreferences() throws IOException {
         Preferences preferences = new Preferences();
@@ -119,12 +176,15 @@ public class FileManager {
                         return FileVisitResult.CONTINUE;
                     }
                 });
+                JOptionPane.showMessageDialog(null, "Копирование было завершено за "+(double)((System.currentTimeMillis()-time)/100)/10 +" секунд");
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                JOptionPane.showMessageDialog(null, "Копирование не было завершено! Ошибка чтения файла");
+                deleteFolderRecursively(targetDir.toFile());
+                DBManager.getInstance(false).delete(targetDir.toFile());
+            }finally {
+                ui.remove(task);
+                tasks.remove(task);
             }
-            JOptionPane.showMessageDialog(null, "Копирование было завершено за "+(double)((System.currentTimeMillis()-time)/100)/10 +" секунд");
-            ui.remove(task);
-            tasks.remove(task);
         }).start();
     }
 }

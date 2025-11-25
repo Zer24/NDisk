@@ -17,20 +17,23 @@ import java.util.*;
 public class UI extends JFrame {
     boolean debug = false;
     public FileManager fm = new FileManager(debug);
-    public DBManager dbm = new DBManager(debug);
+    public DBManager dbm = DBManager.getInstance(debug);
     String defLayoutSet = "shrink, grow, wmin 100, span 2";
     String defLayoutSetHalf = "shrink, grow, wmin 50";
     Font font = new Font("Arial", Font.PLAIN, 11);
     Preferences preferences = new Preferences();
-    String version ="v3.0.0";
+    String version ="v3.1.0";
     ArrayList<Disk> disks = new ArrayList<>();
     String filterFirm = "";
     String filterModel = "";
     Image logoImage;
     ImageIcon logo;
     JPanel menu;
+    Random random = new Random();
+    int state = -1;
     public UI(){
         super("NDisk");
+        setSize(800,600);
         setExtendedState(MAXIMIZED_BOTH);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         try {
@@ -51,9 +54,10 @@ public class UI extends JFrame {
                 logoImage = new ImageIcon(iconURL).getImage();
                 logo = scaleImage(2.0);
             }
-        } catch ( Exception exception){
+        } catch ( Exception exception) {
             //No logo for you
         }
+        random.setSeed(System.currentTimeMillis());
 
         try{
             preferences = fm.readPreferences();
@@ -96,6 +100,7 @@ public class UI extends JFrame {
         ender();
     }
     public void getDisk(){
+        state = 1;
         clear();
 //        fm.checkSettings(settings, preferences);
         JTextField modelsT = new JTextField(10);
@@ -111,7 +116,9 @@ public class UI extends JFrame {
         modelsL.setShowGrid(true);
         updateDisks();
         fillList(modelsM);
-        add(new JScrollPane(modelsL), defLayoutSet+", span 6, growy, wrap");
+        add(new JScrollPane(modelsL), defLayoutSet+", span 6, growy");
+        JPanel treePanel = new JPanel();
+        add(new JScrollPane(treePanel), defLayoutSet+", span 3, grow, wrap");
         firmT.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
@@ -134,14 +141,47 @@ public class UI extends JFrame {
             }
         });
         JButton open = new JButton("Открыть");
+        JButton delete = new JButton("Удалить");
         open.setEnabled(false);
-        modelsL.getSelectionModel().addListSelectionListener(e -> open.setEnabled(modelsL.getSelectedRow()!=-1));
+        delete.setEnabled(false);
+        modelsL.getSelectionModel().addListSelectionListener(e -> {
+            open.setEnabled(modelsL.getSelectedRow()!=-1);
+            delete.setEnabled(modelsL.getSelectedRow()!=-1);
+            treePanel.removeAll();
+            treePanel.setLayout(new MigLayout());
+            try {
+                treePanel.add(fm.getTree(new File(preferences.workingFolder).toPath().resolve(disks.get(modelsL.getSelectedRow()).folder).toFile()));
+            }catch (Exception ignored){
+
+            }
+//            treePanel.add(new JLabel("dskjfhiularig"));
+            treePanel.repaint();
+            treePanel.revalidate();
+        });
         open.addActionListener(e -> fm.openFolder(fm.selectSubFolder(fm.getFolders(new File(preferences.workingFolder)),disks.get(modelsL.getSelectedRow()).folder)));
+        delete.addActionListener(e -> {
+            ArrayList<Disk> disksToDelete = new ArrayList<>();
+            for (int i: modelsL.getSelectedRows()){
+                disksToDelete.add(disks.get(i));
+            }
+            int dbDeleted = dbm.deleteArray(disksToDelete);
+            int fmDeleted = fm.deleteArray(disksToDelete, preferences.workingFolder);
+            openOptionPane("Из базы данных удалено "+dbDeleted+" элементов\n" +
+                                "Из файловой удалено "+fmDeleted+" элементов\n");
+            updateDisks();
+            fillList(modelsM);
+        });
         add(open, defLayoutSet);
+        add(new JLabel(""), defLayoutSet);
+        add(delete, defLayoutSet);
 //        pack();
+        if(random.nextInt()%100<5){
+            open.setText("Открыть!");
+        }
         ender();
     }
     public void addDisk(){
+        state = 2;
         clear();
         JLabel diskL = new JLabel("Расположение диска");
         JTextField diskT = new JTextField(30);
@@ -184,8 +224,8 @@ public class UI extends JFrame {
                     JOptionPane.showMessageDialog(null, "Такая модель уже существует в базе");
                     return;
                 }
-                fm.copyDirectory(this, Path.of(diskT.getText()), Path.of(preferences.workingFolder).resolve( firmT.getText() + "_" + modelT.getText()));
                 dbm.insert(firmT.getText()+"_"+modelT.getText(), firmT.getText(), modelT.getText());
+                fm.copyDirectory(this, Path.of(diskT.getText()), Path.of(preferences.workingFolder).resolve( firmT.getText() + "_" + modelT.getText()));
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(null, "Не удалось скопировать папку");
             }
@@ -212,21 +252,22 @@ public class UI extends JFrame {
     }
     public void settings(){
         clear();
+        state = 3;
         JLabel fontL = new JLabel("Размер шрифта");
         JTextField fontT = new JTextField("0");
         fontT.setText(String.valueOf(preferences.fontSize));
         JButton fontB = new JButton("Подтвердить");
         fontB.addActionListener(e -> {
             if(Objects.equals(fontT.getText(), "")){
-                JOptionPane.showMessageDialog(null, "Напишите размер шрифта в строку и подтвердите");
+               openOptionPane("Напишите размер шрифта в строку и подтвердите");
                 return;
             }
             if(Integer.parseInt(fontT.getText())<10){
-                JOptionPane.showMessageDialog(null, "Минимальный допустимый размер шрифта - 10");
+                openOptionPane("Минимальный допустимый размер шрифта - 10");
                 return;
             }
             if(Integer.parseInt(fontT.getText())>50){
-                JOptionPane.showMessageDialog(null, "Максимальный допустимый размер шрифта - 50");
+                openOptionPane("Максимальный допустимый размер шрифта - 50");
                 return;
             }
             preferences.fontSize = Integer.parseInt(fontT.getText());
@@ -234,7 +275,7 @@ public class UI extends JFrame {
             try {
                 fm.writePreferences(preferences);
             } catch (IOException ex) {
-                JOptionPane.showMessageDialog(null, "Не удалось записать настройки");
+                openOptionPane("Не удалось записать настройки");
             }
             settings();
         });
@@ -328,7 +369,7 @@ public class UI extends JFrame {
                     dbm.setPath(preferences.workingFolder);
 //                    settings = fm.readSettings(preferences);
                 } catch (IOException ex) {
-                    JOptionPane.showMessageDialog(null, "Не удалось записать настройки");
+                    openOptionPane("Не удалось записать настройки");
                 }
             }
             try {
@@ -405,12 +446,12 @@ public class UI extends JFrame {
             while (keys.hasMoreElements()) {
                 Object key = keys.nextElement();
                 if(key.toString().toLowerCase().contains("foreground")){UIManager.put(key, colorFont);}
-                if (debug && key.toString().startsWith("JOptionPane") && key.toString().toLowerCase().contains("")/* && key.toString().contains("")*/) {
+//                if (debug && key.toString().startsWith("JOptionPane") && key.toString().toLowerCase().contains("")/* && key.toString().contains("")*/) {
 //                    System.out.println("hello");
-                    System.out.println(key + " " + defaults.get(key));
+//                    System.out.println(key + " " + defaults.get(key));
 //                    UIManager.put(key, colorBg);
 //                    new JFileChooser().showOpenDialog(this);
-                }
+//                }
             }
         }catch (Exception exception){
             return false;
@@ -436,8 +477,12 @@ public class UI extends JFrame {
         JButton settingsB = new JButton("Настройки");
         settingsB.addActionListener(e -> settings());
         menu.add(settingsB, defLayoutSet);
-
-        add(menu, defLayoutSet+", span 6, wrap");
+//        System.out.println(state);
+        if(state == 1) {
+            add(menu, defLayoutSet + ", span 8, wrap");
+        }else{
+            add(menu, defLayoutSet + ", span 6, wrap");
+        }
     }
     public void ender(){
         setFont(this, font);
@@ -460,5 +505,8 @@ public class UI extends JFrame {
         int b = Math.max(0, Math.min(255, (int) Math.round(color.getBlue() * (1 - mod))));
         if(debug) System.out.println(new Color(r,g,b));
         return new Color(r,g,b);
+    }
+    public void openOptionPane(String text){
+        JOptionPane.showMessageDialog(null, text);
     }
 }
