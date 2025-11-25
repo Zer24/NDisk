@@ -20,7 +20,7 @@ public class UI extends JFrame {
     public DBManager dbm = DBManager.getInstance(debug);
     String defLayoutSet = "shrink, grow, wmin 100, span 2";
     String defLayoutSetHalf = "shrink, grow, wmin 50";
-    Font font = new Font("Arial", Font.PLAIN, 11);
+    Font font = new Font("Arial", Font.PLAIN, 25);
     Preferences preferences = new Preferences();
     String version ="v3.1.0";
     ArrayList<Disk> disks = new ArrayList<>();
